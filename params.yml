@@ -1,0 +1,4 @@
+context: {'class': 'Directory', 'path': './'}
+dockerfile: {'class': 'File', 'path': '.docker/Dockerfile'}
+safe:
+- {'class': 'Directory', 'path': './S1A_IW_GRDH_1SDV_20201228T170552_20201228T170617_035889_0433FB_D8C7.SAFE/'}

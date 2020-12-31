@@ -12,7 +12,6 @@ ENV LC_ALL=en_US.UTF-8 \
     NB_USER=jovyan \
     NB_UID=1002 \
     NB_GID=1002
-
     
 ENV USER=${NB_USER} \ 
     HOME=/home/${NB_USER}
@@ -24,7 +23,7 @@ RUN apt-get -qq update                                                          
     apt-get -qq install --yes apt-utils 
 
 RUN apt-get -qq update                                                                                                              && \
-    apt-get -qq install --yes --no-install-recommends wget make g++ sudo vim less unzip tree file  locales > /dev/null              && \
+    apt-get -qq install --yes --no-install-recommends ttf-dejavu wget make g++ sudo vim less unzip tree file  locales > /dev/null              && \
     apt-get -qq purge                                                                                                               && \
     apt-get -qq clean                                                                                                               && \
     rm -rf /var/lib/apt/lists/*
@@ -50,19 +49,20 @@ RUN chown -R $NB_USER:$NB_GID ${HOME}
 
 USER ${NB_USER}
 
-ENV NB_PYTHON_PREFIX=${CONDA_DIR}/envs/env_burned_area 
+ENV NB_PYTHON_PREFIX=${CONDA_DIR}/envs/env_sar_calibration
 
 ENV PATH=$NB_PYTHON_PREFIX/bin:$CONDA_DIR/bin:$PATH \
     KERNEL_PYTHON_PREFIX=${NB_PYTHON_PREFIX} \
     PREFIX=${NB_PYTHON_PREFIX}
 
-# install project
-COPY --chown=jovyan:100 . ${HOME}
-
+# create the environment
 ADD environment.yml /tmp/environment.yml
 
 RUN mamba env create -p ${NB_PYTHON_PREFIX} -f /tmp/environment.yml                                                                 && \
     mamba clean --all -f -y
+
+# install project
+COPY --chown=jovyan:100 . ${HOME}
 
 RUN cd ${HOME}                                                                                                                      && \
     ${NB_PYTHON_PREFIX}/bin/python setup.py install
