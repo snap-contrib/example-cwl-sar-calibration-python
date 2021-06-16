@@ -1,6 +1,12 @@
 import os
-from snapista import Graph, Operator
+import sys
 
+s = sys.stdout
+f = open('/dev/null', 'w')
+sys.stdout = f
+
+from snapista import Graph, Operator
+sys.stdout = s
 
 def get_identifier(safe):
 

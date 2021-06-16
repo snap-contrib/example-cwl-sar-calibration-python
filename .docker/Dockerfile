@@ -1,70 +1,36 @@
 FROM ubuntu:20.04
 
-MAINTAINER Terradue S.r.l
 USER root
 
-ENV LC_ALL=en_US.UTF-8 \
-    LANG=en_US.UTF-8 \
-    LANGUAGE=en_US.UTF-8 \
-    SHELL=/bin/bash \
-    PATH=/srv/conda/bin:$PATH \
-    DEBIAN_FRONTEND=noninteractive \
-    NB_USER=jovyan \
-    NB_UID=1002 \
-    NB_GID=1002
-    
-ENV USER=${NB_USER} \ 
-    HOME=/home/${NB_USER}
-    
-RUN groupadd --gid ${NB_GID} ${NB_USER}                                                                                             && \
-    useradd --comment "Default user" --create-home --gid ${NB_GID} --no-log-init --shell /bin/bash --uid ${NB_UID} ${NB_USER}
+SHELL ["/bin/bash", "-c"]
 
-RUN apt-get -qq update                                                                                                              && \
-    apt-get -qq install --yes apt-utils 
+ENV BASH_ENV=~/.bashrc                                          \
+    MAMBA_ROOT_PREFIX=/srv/conda                                \
+    PATH=/srv/conda/envs/env_sar_calibration/bin:/srv/conda/envs/env_sar_calibration/snap/bin:$PATH 
 
-RUN apt-get -qq update                                                                                                              && \
-    apt-get -qq install --yes --no-install-recommends ttf-dejavu wget make g++ sudo vim less unzip tree file  locales > /dev/null              && \
-    apt-get -qq purge                                                                                                               && \
-    apt-get -qq clean                                                                                                               && \
-    rm -rf /var/lib/apt/lists/*
-
-RUN echo "LC_ALL=en_US.UTF-8" >> /etc/environment                                                                                   && \
-    echo "en_US.UTF-8 UTF-8" >> /etc/locale.gen                                                                                     && \
-    echo "LANG=en_US.UTF-8" > /etc/locale.conf                                                                                      && \
-    locale-gen en_US.UTF-8
-
-ENV APP_BASE=/srv 
-
-ENV CONDA_DIR=${APP_BASE}/conda 
-
-# conda installation via miniforge
-ADD .docker/install-miniforge.bash /tmp/install-miniforge.bash
-
-RUN chmod 755 /tmp/install-miniforge.bash                                                                                           && \
-    /tmp/install-miniforge.bash                                                                                                     && \
-    rm -f /tmp/install-*.bash 
-
-# fix permissions
-RUN chown -R $NB_USER:$NB_GID ${HOME} 
-
-USER ${NB_USER}
-
-ENV NB_PYTHON_PREFIX=${CONDA_DIR}/envs/env_sar_calibration
-
-ENV PATH=$NB_PYTHON_PREFIX/bin:$CONDA_DIR/bin:$PATH \
-    KERNEL_PYTHON_PREFIX=${NB_PYTHON_PREFIX} \
-    PREFIX=${NB_PYTHON_PREFIX}
-
-# create the environment
 ADD environment.yml /tmp/environment.yml
 
-RUN mamba env create -p ${NB_PYTHON_PREFIX} -f /tmp/environment.yml                                                                 && \
-    mamba clean --all -f -y
+# Install basic commands and mamba
+RUN apt-get update && \
+    apt-get install -y ca-certificates wget ttf-dejavu file bash bzip2  && \
+    wget -qO- https://micromamba.snakepit.net/api/micromamba/linux-64/latest | tar -xvj bin/micromamba --strip-components=1 && \
+    ./micromamba shell init -s bash -p ~/micromamba  && \
+    apt-get clean autoremove --yes  && \
+    rm -rf /var/lib/{apt,dpkg,cache,log}  && \
+    cp ./micromamba /usr/bin  && \
+    micromamba create -f /tmp/environment.yml 
 
-# install project
-COPY --chown=jovyan:100 . ${HOME}
+COPY . /tmp
 
-RUN cd ${HOME}                                                                                                                      && \
-    ${NB_PYTHON_PREFIX}/bin/python setup.py install
+RUN cd /tmp  && \
+    ${MAMBA_ROOT_PREFIX}/envs/env_sar_calibration/bin/python setup.py install  && \
+    rm -fr /srv/conda/pkgs  && \
+    rm -fr /tmp/*
 
-WORKDIR ${HOME}
+# allows removing the --no-read-only CWL runner flag
+ADD snap.properties ${MAMBA_ROOT_PREFIX}/envs/env_sar_calibration/snap/etc/snap.properties
+
+RUN mv /srv/conda/envs/env_sar_calibration/snap/.snap /tmp/.snap
+
+# clean-up
+RUN rm -fr /srv/conda/envs/env_sar_calibration/snap/snap/update/backup

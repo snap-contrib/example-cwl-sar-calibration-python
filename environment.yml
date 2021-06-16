@@ -7,3 +7,4 @@ dependencies:
   - click
   - snap=8.0.0
   - snapista
+  - click2cwl
